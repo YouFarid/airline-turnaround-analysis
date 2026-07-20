@@ -1,0 +1,83 @@
+\echo Loading BTS April 2026 CSV into staging table...
+\copy stg_on_time_performance FROM 'C:/Users/monae/Downloads/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2026_4/On_Time_Reporting_Carrier_On_Time_Performance_(1987_present)_2026_4.csv' WITH (FORMAT csv, HEADER true)
+
+\echo Transforming staging rows into typed analysis table...
+TRUNCATE raw_on_time_performance;
+
+INSERT INTO raw_on_time_performance
+SELECT
+    NULLIF(year, '')::integer,
+    NULLIF(quarter, '')::integer,
+    NULLIF(month, '')::integer,
+    NULLIF(dayofmonth, '')::integer,
+    NULLIF(dayofweek, '')::integer,
+    NULLIF(flightdate, '')::date,
+    NULLIF(reporting_airline, ''),
+    NULLIF(dot_id_reporting_airline, '')::integer,
+    NULLIF(iata_code_reporting_airline, ''),
+    NULLIF(TRIM(tail_number), ''),
+    NULLIF(flight_number_reporting_airline, ''),
+    NULLIF(originairportid, '')::integer,
+    NULLIF(originairportseqid, '')::integer,
+    NULLIF(origincitymarketid, '')::integer,
+    NULLIF(origin, ''),
+    NULLIF(origincityname, ''),
+    NULLIF(originstate, ''),
+    NULLIF(originstatefips, ''),
+    NULLIF(originstatename, ''),
+    NULLIF(originwac, '')::integer,
+    NULLIF(destairportid, '')::integer,
+    NULLIF(destairportseqid, '')::integer,
+    NULLIF(destcitymarketid, '')::integer,
+    NULLIF(dest, ''),
+    NULLIF(destcityname, ''),
+    NULLIF(deststate, ''),
+    NULLIF(deststatefips, ''),
+    NULLIF(deststatename, ''),
+    NULLIF(destwac, '')::integer,
+    NULLIF(crsdeptime, ''),
+    NULLIF(deptime, ''),
+    NULLIF(depdelay, '')::numeric,
+    NULLIF(depdelayminutes, '')::numeric,
+    NULLIF(depdel15, '')::numeric,
+    NULLIF(departuredelaygroups, '')::integer,
+    NULLIF(deptimeblk, ''),
+    NULLIF(taxiout, '')::numeric,
+    NULLIF(wheelsoff, ''),
+    NULLIF(wheelson, ''),
+    NULLIF(taxiin, '')::numeric,
+    NULLIF(crsarrtime, ''),
+    NULLIF(arrtime, ''),
+    NULLIF(arrdelay, '')::numeric,
+    NULLIF(arrdelayminutes, '')::numeric,
+    NULLIF(arrdel15, '')::numeric,
+    NULLIF(arrivaldelaygroups, '')::integer,
+    NULLIF(arrtimeblk, ''),
+    NULLIF(cancelled, '')::numeric,
+    NULLIF(cancellationcode, ''),
+    NULLIF(diverted, '')::numeric,
+    NULLIF(crselapsedtime, '')::numeric,
+    NULLIF(actualelapsedtime, '')::numeric,
+    NULLIF(airtime, '')::numeric,
+    NULLIF(flights, '')::numeric,
+    NULLIF(distance, '')::numeric,
+    NULLIF(distancegroup, '')::integer,
+    NULLIF(carrierdelay, '')::numeric,
+    NULLIF(weatherdelay, '')::numeric,
+    NULLIF(nasdelay, '')::numeric,
+    NULLIF(securitydelay, '')::numeric,
+    NULLIF(lateaircraftdelay, '')::numeric
+FROM stg_on_time_performance;
+
+CREATE INDEX IF NOT EXISTS idx_raw_tail_date_dep
+ON raw_on_time_performance (tail_number, flightdate, crsdeptime);
+
+CREATE INDEX IF NOT EXISTS idx_raw_airline_date
+ON raw_on_time_performance (reporting_airline, flightdate);
+
+CREATE INDEX IF NOT EXISTS idx_raw_origin_date
+ON raw_on_time_performance (origin, flightdate);
+
+ANALYZE raw_on_time_performance;
+
+\echo Done loading BTS data.

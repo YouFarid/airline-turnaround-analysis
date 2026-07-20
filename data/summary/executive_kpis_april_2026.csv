@@ -1,0 +1,2 @@
+flights_in_raw_file,completed_flights_with_tail_number,turnarounds_analyzed,aircraft_tracked,carriers_analyzed,avg_turnaround_minutes,median_turnaround_minutes,pct_under_45_min,pct_over_180_min,delay_propagation_rate
+597919,591206,433812,5699,13,77.99524678893161,61.0,18.515163250440285,3.899846016246669,12.736853752316671

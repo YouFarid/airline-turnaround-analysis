@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aircraft Turnaround Carrier Analysis</title>
+<style>
+body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f5f7fb; color: #1f2937; }
+header { background: #18324f; color: white; padding: 34px 44px; }
+header h1 { margin: 0 0 10px; font-size: 32px; letter-spacing: 0; }
+header p { margin: 0; max-width: 1050px; line-height: 1.5; }
+main { padding: 26px 42px 48px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.kpi, section { background: white; border: 1px solid #d9e0ea; border-radius: 8px; }
+.kpi { padding: 14px; }
+.kpi span { display: block; color: #667085; font-size: 12px; text-transform: uppercase; }
+.kpi strong { display: block; font-size: 25px; margin-top: 4px; }
+.kpi p, .chart-note { color: #667085; font-size: 13px; line-height: 1.4; margin: 7px 0 0; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.wide { grid-column: 1 / -1; }
+section { padding: 18px; overflow-x: auto; }
+h2 { margin: 26px 0 12px; font-size: 21px; }
+h3 { margin: 0 0 8px; font-size: 17px; }
+svg { width: 100%; height: auto; }
+.axis { stroke: #9aa5b1; stroke-width: 1; }
+.axis-label, .axis-title, .legend { fill: #667085; font-size: 12px; }
+.bar-label, .point-label, .heat-label { fill: #1f2937; font-size: 12px; }
+.bar-value { fill: #1f2937; font-size: 12px; font-weight: bold; }
+.heat-value { fill: white; font-size: 10px; font-weight: bold; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 9px; text-align: left; white-space: nowrap; }
+th { background: #f3f6fa; color: #667085; text-transform: uppercase; font-size: 11px; }
+.definitions { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
+.definition { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fbfcfe; }
+.definition p { margin: 6px 0 0; color: #667085; font-size: 13px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<header>
+<h1>Aircraft Turnaround Efficiency by Airline</h1>
+<p>This dashboard follows each aircraft by tail number. It asks a simple question: after a plane lands, how quickly and reliably does that same plane leave again? Airline codes are expanded everywhere, so Spirit Airlines appears as Spirit Airlines (NK), Southwest as Southwest Airlines (WN), and so on.</p>
+</header>
+<main>
+<div class="kpis"><div class='kpi'><span>Aircraft Turns</span><strong>433,812</strong><p>One plane landing, waiting, then leaving again.</p></div><div class='kpi'><span>Planes Tracked</span><strong>5,699</strong><p>Unique aircraft tail numbers in the data.</p></div><div class='kpi'><span>Airlines</span><strong>13</strong><p>Airlines included in April 2026.</p></div><div class='kpi'><span>Typical Ground Time</span><strong>61 min</strong><p>The middle turnaround time.</p></div><div class='kpi'><span>Tight Turns</span><strong>18.5%</strong><p>Turns under 45 minutes.</p></div><div class='kpi'><span>Delay Spread</span><strong>12.7%</strong><p>Late arrival followed by late next departure.</p></div><div class='kpi'><span>Average Ground Time</span><strong>78 min</strong><p>Average time between arrival and next departure.</p></div><div class='kpi'><span>Idle Turns</span><strong>3.9%</strong><p>Turns over 3 hours.</p></div></div>
+<div class="grid">
+<section class='wide'><h3>Metric Translator</h3><p class='chart-note'>Plain-English definitions for the dashboard.</p><div class='definitions'><div class='definition'><b>Turnaround</b><p>The time between one plane landing and that same plane taking off again.</p></div><div class='definition'><b>Tight turn</b><p>A turnaround under 45 minutes. It can be efficient, but there is less room to recover from delays.</p></div><div class='definition'><b>Idle turn</b><p>A turnaround over 180 minutes. The plane is sitting for a long time between flights.</p></div><div class='definition'><b>Delay propagation</b><p>A late plane arrives, then its next flight also leaves late. This is delay spreading.</p></div><div class='definition'><b>Recovery rate</b><p>A late plane arrives, but the next flight still leaves on time. This is the operation catching up.</p></div><div class='definition'><b>Airborne hours</b><p>How many hours the average plane spends flying in a day. More flying usually means better aircraft use.</p></div></div></section>
+<section><h3>Airline Risk Map</h3>
+<p class='chart-note'>Right means the airline uses more short ground turns. Higher means late arrivals more often make the next flight late too. Bigger circles mean more turnarounds in the data.</p>
+<svg viewBox='0 0 850 500' role='img'>
+<line x1='78' y1='436' x2='814' y2='436' class='axis'/>
+<line x1='78' y1='40' x2='78' y2='436' class='axis'/>
+<text x='315.0' y='482' class='axis-title'>Short-turn pressure: % under 45 minutes</text>
+<text x='12' y='50' class='axis-title'>Delay spread: late arrival + late next departure</text>
+<circle cx='109.9' cy='82.4' r='11.4' fill='#00897b' opacity='0.74'></circle>
+<text x='125.3' y='86.4' class='point-label'>Spirit Airlines (NK)</text>
+<circle cx='275.9' cy='181.7' r='11.6' fill='#00897b' opacity='0.74'></circle>
+<text x='291.4' y='185.7' class='point-label'>Allegiant Air (G4)</text>
+<circle cx='176.0' cy='188.0' r='13.0' fill='#00897b' opacity='0.74'></circle>
+<text x='193.0' y='192.0' class='point-label'>Frontier Airlines (F9)</text>
+<circle cx='464.1' cy='194.7' r='23.0' fill='#00897b' opacity='0.74'></circle>
+<text x='491.1' y='198.7' class='point-label'>Southwest Airlines (WN)</text>
+<circle cx='759.5' cy='210.7' r='13.6' fill='#00897b' opacity='0.74'></circle>
+<text x='777.1' y='214.7' class='point-label'>PSA Airlines (OH)</text>
+<circle cx='124.4' cy='220.2' r='13.0' fill='#00897b' opacity='0.74'></circle>
+<text x='141.4' y='224.2' class='point-label'>JetBlue Airways (B6)</text>
+<circle cx='182.9' cy='249.6' r='19.6' fill='#00897b' opacity='0.74'></circle>
+<text x='206.5' y='253.6' class='point-label'>American Airlines (AA)</text>
+<circle cx='644.3' cy='266.0' r='19.4' fill='#00897b' opacity='0.74'></circle>
+<text x='667.7' y='270.0' class='point-label'>SkyWest Airlines (OO)</text>
+<circle cx='746.8' cy='267.0' r='14.6' fill='#00897b' opacity='0.74'></circle>
+<text x='765.4' y='271.0' class='point-label'>Envoy Air (MQ)</text>
+<circle cx='601.1' cy='276.6' r='15.1' fill='#00897b' opacity='0.74'></circle>
+<text x='620.2' y='280.6' class='point-label'>Republic Airways (YX)</text>
+<circle cx='283.4' cy='298.7' r='14.1' fill='#00897b' opacity='0.74'></circle>
+<text x='301.5' y='302.7' class='point-label'>Alaska Airlines (AS)</text>
+<circle cx='124.0' cy='317.0' r='20.0' fill='#00897b' opacity='0.74'></circle>
+<text x='148.0' y='321.0' class='point-label'>Delta Air Lines (DL)</text>
+<circle cx='108.1' cy='320.0' r='18.1' fill='#00897b' opacity='0.74'></circle>
+<text x='130.2' y='324.0' class='point-label'>United Airlines (UA)</text>
+</svg></section>
+<section><h3>Which airlines let delays spread the most?</h3><p class='chart-note'>A delay spreads when a late arriving aircraft also makes its next flight leave late.</p>
+<svg viewBox='0 0 850 580' role='img'>
+<text x='8' y='71' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='270' y='54' width='488.0' height='24' rx='3' fill='#d64545'></rect>
+<text x='766.0' y='71' class='bar-value'>24.6%</text>
+<text x='8' y='109' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='270' y='92' width='350.9' height='24' rx='3' fill='#d64545'></rect>
+<text x='628.9' y='109' class='bar-value'>17.7%</text>
+<text x='8' y='147' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='270' y='130' width='342.4' height='24' rx='3' fill='#d64545'></rect>
+<text x='620.4' y='147' class='bar-value'>17.3%</text>
+<text x='8' y='185' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='270' y='168' width='333.0' height='24' rx='3' fill='#d64545'></rect>
+<text x='611.0' y='185' class='bar-value'>16.8%</text>
+<text x='8' y='223' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='270' y='206' width='310.9' height='24' rx='3' fill='#d64545'></rect>
+<text x='588.9' y='223' class='bar-value'>15.7%</text>
+<text x='8' y='261' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='270' y='244' width='297.9' height='24' rx='3' fill='#d64545'></rect>
+<text x='575.9' y='261' class='bar-value'>15.0%</text>
+<text x='8' y='299' class='bar-label'>American Airlines (AA)</text>
+<rect x='270' y='282' width='257.3' height='24' rx='3' fill='#d64545'></rect>
+<text x='535.3' y='299' class='bar-value'>13.0%</text>
+<text x='8' y='337' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='270' y='320' width='234.6' height='24' rx='3' fill='#d64545'></rect>
+<text x='512.6' y='337' class='bar-value'>11.8%</text>
+<text x='8' y='375' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='270' y='358' width='233.2' height='24' rx='3' fill='#d64545'></rect>
+<text x='511.2' y='375' class='bar-value'>11.8%</text>
+<text x='8' y='413' class='bar-label'>Republic Airways (YX)</text>
+<rect x='270' y='396' width='220.0' height='24' rx='3' fill='#d64545'></rect>
+<text x='498.0' y='413' class='bar-value'>11.1%</text>
+<text x='8' y='451' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='270' y='434' width='189.5' height='24' rx='3' fill='#d64545'></rect>
+<text x='467.5' y='451' class='bar-value'>9.6%</text>
+<text x='8' y='489' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='270' y='472' width='164.3' height='24' rx='3' fill='#d64545'></rect>
+<text x='442.3' y='489' class='bar-value'>8.3%</text>
+<text x='8' y='527' class='bar-label'>United Airlines (UA)</text>
+<rect x='270' y='510' width='160.1' height='24' rx='3' fill='#d64545'></rect>
+<text x='438.1' y='527' class='bar-value'>8.1%</text>
+</svg></section>
+<section><h3>Which airlines schedule the most short turns?</h3><p class='chart-note'>A short turn is under 45 minutes on the ground. This can be efficient, but risky.</p>
+<svg viewBox='0 0 850 580' role='img'>
+<text x='8' y='71' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='270' y='54' width='488.0' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='766.0' y='71' class='bar-value'>44.5%</text>
+<text x='8' y='109' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='270' y='92' width='478.9' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='756.9' y='109' class='bar-value'>43.7%</text>
+<text x='8' y='147' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='270' y='130' width='405.5' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='683.5' y='147' class='bar-value'>37.0%</text>
+<text x='8' y='185' class='bar-label'>Republic Airways (YX)</text>
+<rect x='270' y='168' width='374.6' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='652.6' y='185' class='bar-value'>34.2%</text>
+<text x='8' y='223' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='270' y='206' width='276.5' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='554.5' y='223' class='bar-value'>25.2%</text>
+<text x='8' y='261' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='270' y='244' width='147.1' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='425.1' y='261' class='bar-value'>13.4%</text>
+<text x='8' y='299' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='270' y='282' width='141.7' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='419.7' y='299' class='bar-value'>12.9%</text>
+<text x='8' y='337' class='bar-label'>American Airlines (AA)</text>
+<rect x='270' y='320' width='75.2' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='353.2' y='337' class='bar-value'>6.9%</text>
+<text x='8' y='375' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='270' y='358' width='70.2' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='348.2' y='375' class='bar-value'>6.4%</text>
+<text x='8' y='413' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='270' y='396' width='33.2' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='311.2' y='413' class='bar-value'>3.0%</text>
+<text x='8' y='451' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='270' y='434' width='33.0' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='311.0' y='451' class='bar-value'>3.0%</text>
+<text x='8' y='489' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='270' y='472' width='22.9' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='300.9' y='489' class='bar-value'>2.1%</text>
+<text x='8' y='527' class='bar-label'>United Airlines (UA)</text>
+<rect x='270' y='510' width='21.5' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='299.5' y='527' class='bar-value'>2.0%</text>
+</svg></section>
+<section><h3>Which airlines keep aircraft flying the most?</h3><p class='chart-note'>More airborne hours means the average aircraft spends more of the day in the air.</p>
+<svg viewBox='0 0 850 580' role='img'>
+<text x='8' y='71' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='270' y='54' width='488.0' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='766.0' y='71' class='bar-value'>7.6 hrs</text>
+<text x='8' y='109' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='270' y='92' width='421.9' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='699.9' y='109' class='bar-value'>6.6 hrs</text>
+<text x='8' y='147' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='270' y='130' width='409.7' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='687.7' y='147' class='bar-value'>6.4 hrs</text>
+<text x='8' y='185' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='270' y='168' width='408.7' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='686.7' y='185' class='bar-value'>6.4 hrs</text>
+<text x='8' y='223' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='270' y='206' width='408.0' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='686.0' y='223' class='bar-value'>6.4 hrs</text>
+<text x='8' y='261' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='270' y='244' width='402.4' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='680.4' y='261' class='bar-value'>6.3 hrs</text>
+<text x='8' y='299' class='bar-label'>American Airlines (AA)</text>
+<rect x='270' y='282' width='398.1' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='676.1' y='299' class='bar-value'>6.2 hrs</text>
+<text x='8' y='337' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='270' y='320' width='386.2' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='664.2' y='337' class='bar-value'>6.0 hrs</text>
+<text x='8' y='375' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='270' y='358' width='360.7' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='638.7' y='375' class='bar-value'>5.6 hrs</text>
+<text x='8' y='413' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='270' y='396' width='359.3' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='637.3' y='413' class='bar-value'>5.6 hrs</text>
+<text x='8' y='451' class='bar-label'>United Airlines (UA)</text>
+<rect x='270' y='434' width='358.3' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='636.3' y='451' class='bar-value'>5.6 hrs</text>
+<text x='8' y='489' class='bar-label'>Republic Airways (YX)</text>
+<rect x='270' y='472' width='355.5' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='633.5' y='489' class='bar-value'>5.5 hrs</text>
+<text x='8' y='527' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='270' y='510' width='320.8' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='598.8' y='527' class='bar-value'>5.0 hrs</text>
+</svg></section>
+<section><h3>Which airlines recover late arrivals best?</h3><p class='chart-note'>Recovery means the aircraft arrived late, but its next flight still left on time.</p>
+<svg viewBox='0 0 850 580' role='img'>
+<text x='8' y='71' class='bar-label'>United Airlines (UA)</text>
+<rect x='270' y='54' width='488.0' height='24' rx='3' fill='#d64545'></rect>
+<text x='766.0' y='71' class='bar-value'>7.1%</text>
+<text x='8' y='109' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='270' y='92' width='467.8' height='24' rx='3' fill='#d64545'></rect>
+<text x='745.8' y='109' class='bar-value'>6.8%</text>
+<text x='8' y='147' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='270' y='130' width='438.8' height='24' rx='3' fill='#d64545'></rect>
+<text x='716.8' y='147' class='bar-value'>6.4%</text>
+<text x='8' y='185' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='270' y='168' width='421.3' height='24' rx='3' fill='#d64545'></rect>
+<text x='699.3' y='185' class='bar-value'>6.1%</text>
+<text x='8' y='223' class='bar-label'>American Airlines (AA)</text>
+<rect x='270' y='206' width='368.1' height='24' rx='3' fill='#d64545'></rect>
+<text x='646.1' y='223' class='bar-value'>5.3%</text>
+<text x='8' y='261' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='270' y='244' width='359.5' height='24' rx='3' fill='#d64545'></rect>
+<text x='637.5' y='261' class='bar-value'>5.2%</text>
+<text x='8' y='299' class='bar-label'>Republic Airways (YX)</text>
+<rect x='270' y='282' width='349.1' height='24' rx='3' fill='#d64545'></rect>
+<text x='627.1' y='299' class='bar-value'>5.1%</text>
+<text x='8' y='337' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='270' y='320' width='340.9' height='24' rx='3' fill='#d64545'></rect>
+<text x='618.9' y='337' class='bar-value'>4.9%</text>
+<text x='8' y='375' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='270' y='358' width='329.9' height='24' rx='3' fill='#d64545'></rect>
+<text x='607.9' y='375' class='bar-value'>4.8%</text>
+<text x='8' y='413' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='270' y='396' width='320.0' height='24' rx='3' fill='#d64545'></rect>
+<text x='598.0' y='413' class='bar-value'>4.6%</text>
+<text x='8' y='451' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='270' y='434' width='313.1' height='24' rx='3' fill='#d64545'></rect>
+<text x='591.1' y='451' class='bar-value'>4.5%</text>
+<text x='8' y='489' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='270' y='472' width='198.1' height='24' rx='3' fill='#d64545'></rect>
+<text x='476.1' y='489' class='bar-value'>2.9%</text>
+<text x='8' y='527' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='270' y='510' width='164.4' height='24' rx='3' fill='#d64545'></rect>
+<text x='442.4' y='527' class='bar-value'>2.4%</text>
+</svg></section>
+<section><h3>Which airlines have more long ground waits?</h3><p class='chart-note'>Idle turns are over 180 minutes. Some are planned, but too many can suggest unused aircraft time.</p>
+<svg viewBox='0 0 850 580' role='img'>
+<text x='8' y='71' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='270' y='54' width='488.0' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='766.0' y='71' class='bar-value'>10.0%</text>
+<text x='8' y='109' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='270' y='92' width='382.1' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='660.1' y='109' class='bar-value'>7.8%</text>
+<text x='8' y='147' class='bar-label'>American Airlines (AA)</text>
+<rect x='270' y='130' width='292.5' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='570.5' y='147' class='bar-value'>6.0%</text>
+<text x='8' y='185' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='270' y='168' width='279.3' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='557.3' y='185' class='bar-value'>5.7%</text>
+<text x='8' y='223' class='bar-label'>United Airlines (UA)</text>
+<rect x='270' y='206' width='261.2' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='539.2' y='223' class='bar-value'>5.3%</text>
+<text x='8' y='261' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='270' y='244' width='225.6' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='503.6' y='261' class='bar-value'>4.6%</text>
+<text x='8' y='299' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='270' y='282' width='206.3' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='484.3' y='299' class='bar-value'>4.2%</text>
+<text x='8' y='337' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='270' y='320' width='193.8' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='471.8' y='337' class='bar-value'>4.0%</text>
+<text x='8' y='375' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='270' y='358' width='157.2' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='435.2' y='375' class='bar-value'>3.2%</text>
+<text x='8' y='413' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='270' y='396' width='150.3' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='428.3' y='413' class='bar-value'>3.1%</text>
+<text x='8' y='451' class='bar-label'>Republic Airways (YX)</text>
+<rect x='270' y='434' width='91.6' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='369.6' y='451' class='bar-value'>1.9%</text>
+<text x='8' y='489' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='270' y='472' width='58.3' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='336.3' y='489' class='bar-value'>1.2%</text>
+<text x='8' y='527' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='270' y='510' width='37.9' height='24' rx='3' fill='#2f80ed'></rect>
+<text x='315.9' y='527' class='bar-value'>0.8%</text>
+</svg></section>
+<section class="wide"><h3>Ground Time Mix</h3>
+<p class='chart-note'>Each bar is one airline's ground time. Red and amber are short, high-pressure turns. Dark gray is long idle time.</p>
+<svg viewBox='0 0 920 534' role='img'>
+<rect x='230' y='16' width='12' height='12' fill='#d64545'></rect>
+<text x='247' y='27' class='legend'>Critical: under 35 min</text>
+<rect x='372' y='16' width='12' height='12' fill='#f2a900'></rect>
+<text x='389' y='27' class='legend'>Tight: 35-44 min</text>
+<rect x='514' y='16' width='12' height='12' fill='#2f80ed'></rect>
+<text x='531' y='27' class='legend'>Standard: 45-90 min</text>
+<rect x='656' y='16' width='12' height='12' fill='#667085'></rect>
+<text x='673' y='27' class='legend'>Long: 91-180 min</text>
+<rect x='798' y='16' width='12' height='12' fill='#1f2937'></rect>
+<text x='815' y='27' class='legend'>Idle: over 180 min</text>
+<text x='8' y='74' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='230.0' y='58' width='45.2' height='22' fill='#d64545'></rect>
+<rect x='275.2' y='58' width='44.1' height='22' fill='#f2a900'></rect>
+<rect x='319.4' y='58' width='429.3' height='22' fill='#2f80ed'></rect>
+<rect x='748.6' y='58' width='126.9' height='22' fill='#667085'></rect>
+<rect x='875.5' y='58' width='20.5' height='22' fill='#1f2937'></rect>
+<text x='8' y='108' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='230.0' y='92' width='5.0' height='22' fill='#d64545'></rect>
+<rect x='235.0' y='92' width='81.1' height='22' fill='#f2a900'></rect>
+<rect x='316.1' y='92' width='540.0' height='22' fill='#2f80ed'></rect>
+<rect x='856.0' y='92' width='34.8' height='22' fill='#667085'></rect>
+<rect x='890.8' y='92' width='5.2' height='22' fill='#1f2937'></rect>
+<text x='8' y='142' class='bar-label'>American Airlines (AA)</text>
+<rect x='230.0' y='126' width='5.4' height='22' fill='#d64545'></rect>
+<rect x='235.4' y='126' width='40.3' height='22' fill='#f2a900'></rect>
+<rect x='275.7' y='126' width='467.5' height='22' fill='#2f80ed'></rect>
+<rect x='743.1' y='126' width='113.0' height='22' fill='#667085'></rect>
+<rect x='856.1' y='126' width='39.9' height='22' fill='#1f2937'></rect>
+<text x='8' y='176' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='230.0' y='160' width='1.0' height='22' fill='#d64545'></rect>
+<rect x='231.0' y='160' width='19.0' height='22' fill='#f2a900'></rect>
+<rect x='250.0' y='160' width='484.5' height='22' fill='#2f80ed'></rect>
+<rect x='734.5' y='160' width='133.3' height='22' fill='#667085'></rect>
+<rect x='867.9' y='160' width='28.1' height='22' fill='#1f2937'></rect>
+<text x='8' y='210' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='230.0' y='194' width='123.5' height='22' fill='#d64545'></rect>
+<rect x='353.5' y='194' width='167.5' height='22' fill='#f2a900'></rect>
+<rect x='520.9' y='194' width='289.3' height='22' fill='#2f80ed'></rect>
+<rect x='810.3' y='194' width='47.6' height='22' fill='#667085'></rect>
+<rect x='857.9' y='194' width='38.1' height='22' fill='#1f2937'></rect>
+<text x='8' y='244' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='230.0' y='228' width='3.7' height='22' fill='#d64545'></rect>
+<rect x='233.7' y='228' width='39.0' height='22' fill='#f2a900'></rect>
+<rect x='272.6' y='228' width='488.8' height='22' fill='#2f80ed'></rect>
+<rect x='761.4' y='228' width='103.8' height='22' fill='#667085'></rect>
+<rect x='865.2' y='228' width='30.8' height='22' fill='#1f2937'></rect>
+<text x='8' y='278' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='230.0' y='262' width='0.9' height='22' fill='#d64545'></rect>
+<rect x='230.9' y='262' width='19.3' height='22' fill='#f2a900'></rect>
+<rect x='250.2' y='262' width='469.8' height='22' fill='#2f80ed'></rect>
+<rect x='719.9' y='262' width='124.0' height='22' fill='#667085'></rect>
+<rect x='843.9' y='262' width='52.1' height='22' fill='#1f2937'></rect>
+<text x='8' y='312' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='230.0' y='296' width='146.0' height='22' fill='#d64545'></rect>
+<rect x='376.0' y='296' width='150.4' height='22' fill='#f2a900'></rect>
+<rect x='526.4' y='296' width='277.8' height='22' fill='#2f80ed'></rect>
+<rect x='804.3' y='296' width='70.3' height='22' fill='#667085'></rect>
+<rect x='874.6' y='296' width='21.4' height='22' fill='#1f2937'></rect>
+<text x='8' y='346' class='bar-label'>Republic Airways (YX)</text>
+<rect x='230.0' y='330' width='101.2' height='22' fill='#d64545'></rect>
+<rect x='331.2' y='330' width='126.3' height='22' fill='#f2a900'></rect>
+<rect x='457.5' y='330' width='369.5' height='22' fill='#2f80ed'></rect>
+<rect x='827.1' y='330' width='56.4' height='22' fill='#667085'></rect>
+<rect x='883.5' y='330' width='12.5' height='22' fill='#1f2937'></rect>
+<text x='8' y='380' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='230.0' y='364' width='111.3' height='22' fill='#d64545'></rect>
+<rect x='341.3' y='364' width='135.0' height='22' fill='#f2a900'></rect>
+<rect x='476.3' y='364' width='315.1' height='22' fill='#2f80ed'></rect>
+<rect x='791.4' y='364' width='78.2' height='22' fill='#667085'></rect>
+<rect x='869.6' y='364' width='26.4' height='22' fill='#1f2937'></rect>
+<text x='8' y='414' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='230.0' y='398' width='27.2' height='22' fill='#d64545'></rect>
+<rect x='257.2' y='398' width='140.7' height='22' fill='#f2a900'></rect>
+<rect x='398.0' y='398' width='459.8' height='22' fill='#2f80ed'></rect>
+<rect x='857.7' y='398' width='30.3' height='22' fill='#667085'></rect>
+<rect x='888.1' y='398' width='7.9' height='22' fill='#1f2937'></rect>
+<text x='8' y='448' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='230.0' y='432' width='0.3' height='22' fill='#d64545'></rect>
+<rect x='230.3' y='432' width='13.6' height='22' fill='#f2a900'></rect>
+<rect x='243.9' y='432' width='496.8' height='22' fill='#2f80ed'></rect>
+<rect x='740.7' y='432' width='88.8' height='22' fill='#667085'></rect>
+<rect x='829.5' y='432' width='66.5' height='22' fill='#1f2937'></rect>
+<text x='8' y='482' class='bar-label'>United Airlines (UA)</text>
+<rect x='230.0' y='466' width='0.7' height='22' fill='#d64545'></rect>
+<rect x='230.7' y='466' width='12.4' height='22' fill='#f2a900'></rect>
+<rect x='243.1' y='466' width='414.2' height='22' fill='#2f80ed'></rect>
+<rect x='657.3' y='466' width='203.1' height='22' fill='#667085'></rect>
+<rect x='860.4' y='466' width='35.6' height='22' fill='#1f2937'></rect>
+</svg></section>
+<section class="wide"><h3>When Delays Spread During The Day</h3>
+<p class='chart-note'>Each square is an arrival hour. Darker red means more late arrivals turned into late next departures.</p>
+<svg viewBox='0 0 980 482' role='img'>
+<text x='238' y='28' class='heat-label'>0</text>
+<text x='268' y='28' class='heat-label'>1</text>
+<text x='298' y='28' class='heat-label'>2</text>
+<text x='328' y='28' class='heat-label'>3</text>
+<text x='358' y='28' class='heat-label'>4</text>
+<text x='388' y='28' class='heat-label'>5</text>
+<text x='418' y='28' class='heat-label'>6</text>
+<text x='448' y='28' class='heat-label'>7</text>
+<text x='478' y='28' class='heat-label'>8</text>
+<text x='508' y='28' class='heat-label'>9</text>
+<text x='538' y='28' class='heat-label'>10</text>
+<text x='568' y='28' class='heat-label'>11</text>
+<text x='598' y='28' class='heat-label'>12</text>
+<text x='628' y='28' class='heat-label'>13</text>
+<text x='658' y='28' class='heat-label'>14</text>
+<text x='688' y='28' class='heat-label'>15</text>
+<text x='718' y='28' class='heat-label'>16</text>
+<text x='748' y='28' class='heat-label'>17</text>
+<text x='778' y='28' class='heat-label'>18</text>
+<text x='808' y='28' class='heat-label'>19</text>
+<text x='838' y='28' class='heat-label'>20</text>
+<text x='868' y='28' class='heat-label'>21</text>
+<text x='898' y='28' class='heat-label'>22</text>
+<text x='928' y='28' class='heat-label'>23</text>
+<text x='8' y='61' class='bar-label'>Alaska Airlines (AS)</text>
+<rect x='230' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='42' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='410' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='42' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='470' y='42' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='500' y='42' width='28' height='28' fill='#d64545' opacity='0.16'></rect>
+<rect x='530' y='42' width='28' height='28' fill='#d64545' opacity='0.19'></rect>
+<rect x='560' y='42' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='590' y='42' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='620' y='42' width='28' height='28' fill='#d64545' opacity='0.23'></rect>
+<rect x='650' y='42' width='28' height='28' fill='#d64545' opacity='0.28'></rect>
+<rect x='680' y='42' width='28' height='28' fill='#d64545' opacity='0.23'></rect>
+<rect x='710' y='42' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='740' y='42' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='770' y='42' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='800' y='42' width='28' height='28' fill='#d64545' opacity='0.23'></rect>
+<rect x='830' y='42' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='860' y='42' width='28' height='28' fill='#d64545' opacity='0.31'></rect>
+<rect x='890' y='42' width='28' height='28' fill='#d64545' opacity='0.52'></rect>
+<rect x='920' y='42' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='91' class='bar-label'>Allegiant Air (G4)</text>
+<rect x='230' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='72' width='28' height='28' fill='#d64545' opacity='0.14'></rect>
+<rect x='470' y='72' width='28' height='28' fill='#d64545' opacity='0.16'></rect>
+<rect x='500' y='72' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='530' y='72' width='28' height='28' fill='#d64545' opacity='0.19'></rect>
+<rect x='560' y='72' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='590' y='72' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='620' y='72' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='650' y='72' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='680' y='72' width='28' height='28' fill='#d64545' opacity='0.41'></rect>
+<rect x='710' y='72' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='740' y='72' width='28' height='28' fill='#d64545' opacity='0.36'></rect>
+<rect x='770' y='72' width='28' height='28' fill='#d64545' opacity='0.46'></rect>
+<rect x='800' y='72' width='28' height='28' fill='#d64545' opacity='0.47'></rect>
+<rect x='830' y='72' width='28' height='28' fill='#d64545' opacity='0.44'></rect>
+<rect x='860' y='72' width='28' height='28' fill='#d64545' opacity='0.70'></rect>
+<rect x='890' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='920' y='72' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='121' class='bar-label'>American Airlines (AA)</text>
+<rect x='230' y='102' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='102' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='102' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='102' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='102' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='102' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='102' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='440' y='102' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='470' y='102' width='28' height='28' fill='#d64545' opacity='0.14'></rect>
+<rect x='500' y='102' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='530' y='102' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='560' y='102' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='590' y='102' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='620' y='102' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='650' y='102' width='28' height='28' fill='#d64545' opacity='0.27'></rect>
+<rect x='680' y='102' width='28' height='28' fill='#d64545' opacity='0.29'></rect>
+<rect x='710' y='102' width='28' height='28' fill='#d64545' opacity='0.29'></rect>
+<rect x='740' y='102' width='28' height='28' fill='#d64545' opacity='0.30'></rect>
+<rect x='770' y='102' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='800' y='102' width='28' height='28' fill='#d64545' opacity='0.35'></rect>
+<rect x='830' y='102' width='28' height='28' fill='#d64545' opacity='0.40'></rect>
+<rect x='860' y='102' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='890' y='102' width='28' height='28' fill='#d64545' opacity='0.50'></rect>
+<rect x='920' y='102' width='28' height='28' fill='#d64545' opacity='0.46'></rect>
+<text x='8' y='151' class='bar-label'>Delta Air Lines (DL)</text>
+<rect x='230' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='132' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='470' y='132' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='500' y='132' width='28' height='28' fill='#d64545' opacity='0.16'></rect>
+<rect x='530' y='132' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='560' y='132' width='28' height='28' fill='#d64545' opacity='0.19'></rect>
+<rect x='590' y='132' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='620' y='132' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='650' y='132' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='680' y='132' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='710' y='132' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='740' y='132' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='770' y='132' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='800' y='132' width='28' height='28' fill='#d64545' opacity='0.29'></rect>
+<rect x='830' y='132' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='860' y='132' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='890' y='132' width='28' height='28' fill='#d64545' opacity='0.42'></rect>
+<rect x='920' y='132' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='181' class='bar-label'>Envoy Air (MQ)</text>
+<rect x='230' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='162' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='410' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='162' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='470' y='162' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='500' y='162' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='530' y='162' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='560' y='162' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='590' y='162' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='620' y='162' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='650' y='162' width='28' height='28' fill='#d64545' opacity='0.27'></rect>
+<rect x='680' y='162' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='710' y='162' width='28' height='28' fill='#d64545' opacity='0.29'></rect>
+<rect x='740' y='162' width='28' height='28' fill='#d64545' opacity='0.29'></rect>
+<rect x='770' y='162' width='28' height='28' fill='#d64545' opacity='0.30'></rect>
+<rect x='800' y='162' width='28' height='28' fill='#d64545' opacity='0.27'></rect>
+<rect x='830' y='162' width='28' height='28' fill='#d64545' opacity='0.46'></rect>
+<rect x='860' y='162' width='28' height='28' fill='#d64545' opacity='0.31'></rect>
+<rect x='890' y='162' width='28' height='28' fill='#d64545' opacity='0.66'></rect>
+<rect x='920' y='162' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='211' class='bar-label'>Frontier Airlines (F9)</text>
+<rect x='230' y='192' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='192' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='192' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='192' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='192' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='192' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='410' y='192' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='440' y='192' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='470' y='192' width='28' height='28' fill='#d64545' opacity='0.19'></rect>
+<rect x='500' y='192' width='28' height='28' fill='#d64545' opacity='0.23'></rect>
+<rect x='530' y='192' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='560' y='192' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='590' y='192' width='28' height='28' fill='#d64545' opacity='0.31'></rect>
+<rect x='620' y='192' width='28' height='28' fill='#d64545' opacity='0.27'></rect>
+<rect x='650' y='192' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='680' y='192' width='28' height='28' fill='#d64545' opacity='0.30'></rect>
+<rect x='710' y='192' width='28' height='28' fill='#d64545' opacity='0.31'></rect>
+<rect x='740' y='192' width='28' height='28' fill='#d64545' opacity='0.31'></rect>
+<rect x='770' y='192' width='28' height='28' fill='#d64545' opacity='0.38'></rect>
+<rect x='800' y='192' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='830' y='192' width='28' height='28' fill='#d64545' opacity='0.42'></rect>
+<rect x='860' y='192' width='28' height='28' fill='#d64545' opacity='0.39'></rect>
+<rect x='890' y='192' width='28' height='28' fill='#d64545' opacity='0.74'></rect>
+<text x='895' y='210' class='heat-value'>59</text>
+<rect x='920' y='192' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='241' class='bar-label'>JetBlue Airways (B6)</text>
+<rect x='230' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='222' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='470' y='222' width='28' height='28' fill='#d64545' opacity='0.14'></rect>
+<rect x='500' y='222' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='530' y='222' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='560' y='222' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='590' y='222' width='28' height='28' fill='#d64545' opacity='0.23'></rect>
+<rect x='620' y='222' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='650' y='222' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='680' y='222' width='28' height='28' fill='#d64545' opacity='0.34'></rect>
+<rect x='710' y='222' width='28' height='28' fill='#d64545' opacity='0.31'></rect>
+<rect x='740' y='222' width='28' height='28' fill='#d64545' opacity='0.34'></rect>
+<rect x='770' y='222' width='28' height='28' fill='#d64545' opacity='0.35'></rect>
+<rect x='800' y='222' width='28' height='28' fill='#d64545' opacity='0.36'></rect>
+<rect x='830' y='222' width='28' height='28' fill='#d64545' opacity='0.49'></rect>
+<rect x='860' y='222' width='28' height='28' fill='#d64545' opacity='0.63'></rect>
+<rect x='890' y='222' width='28' height='28' fill='#d64545' opacity='0.43'></rect>
+<rect x='920' y='222' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='271' class='bar-label'>PSA Airlines (OH)</text>
+<rect x='230' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='252' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='440' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='470' y='252' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='500' y='252' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='530' y='252' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='560' y='252' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='590' y='252' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='620' y='252' width='28' height='28' fill='#d64545' opacity='0.27'></rect>
+<rect x='650' y='252' width='28' height='28' fill='#d64545' opacity='0.29'></rect>
+<rect x='680' y='252' width='28' height='28' fill='#d64545' opacity='0.30'></rect>
+<rect x='710' y='252' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='740' y='252' width='28' height='28' fill='#d64545' opacity='0.36'></rect>
+<rect x='770' y='252' width='28' height='28' fill='#d64545' opacity='0.38'></rect>
+<rect x='800' y='252' width='28' height='28' fill='#d64545' opacity='0.38'></rect>
+<rect x='830' y='252' width='28' height='28' fill='#d64545' opacity='0.47'></rect>
+<rect x='860' y='252' width='28' height='28' fill='#d64545' opacity='0.39'></rect>
+<rect x='890' y='252' width='28' height='28' fill='#d64545' opacity='0.98'></rect>
+<text x='895' y='270' class='heat-value'>81</text>
+<rect x='920' y='252' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='301' class='bar-label'>Republic Airways (YX)</text>
+<rect x='230' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='282' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='440' y='282' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='470' y='282' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='500' y='282' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='530' y='282' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='560' y='282' width='28' height='28' fill='#d64545' opacity='0.20'></rect>
+<rect x='590' y='282' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='620' y='282' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='650' y='282' width='28' height='28' fill='#d64545' opacity='0.23'></rect>
+<rect x='680' y='282' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='710' y='282' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='740' y='282' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='770' y='282' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='800' y='282' width='28' height='28' fill='#d64545' opacity='0.37'></rect>
+<rect x='830' y='282' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='860' y='282' width='28' height='28' fill='#d64545' opacity='0.53'></rect>
+<rect x='890' y='282' width='28' height='28' fill='#d64545' opacity='1.00'></rect>
+<text x='895' y='300' class='heat-value'>83</text>
+<rect x='920' y='282' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='331' class='bar-label'>SkyWest Airlines (OO)</text>
+<rect x='230' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='312' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='470' y='312' width='28' height='28' fill='#d64545' opacity='0.16'></rect>
+<rect x='500' y='312' width='28' height='28' fill='#d64545' opacity='0.17'></rect>
+<rect x='530' y='312' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='560' y='312' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='590' y='312' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='620' y='312' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='650' y='312' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='680' y='312' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='710' y='312' width='28' height='28' fill='#d64545' opacity='0.26'></rect>
+<rect x='740' y='312' width='28' height='28' fill='#d64545' opacity='0.28'></rect>
+<rect x='770' y='312' width='28' height='28' fill='#d64545' opacity='0.30'></rect>
+<rect x='800' y='312' width='28' height='28' fill='#d64545' opacity='0.28'></rect>
+<rect x='830' y='312' width='28' height='28' fill='#d64545' opacity='0.36'></rect>
+<rect x='860' y='312' width='28' height='28' fill='#d64545' opacity='0.48'></rect>
+<rect x='890' y='312' width='28' height='28' fill='#d64545' opacity='0.74'></rect>
+<text x='895' y='330' class='heat-value'>59</text>
+<rect x='920' y='312' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='361' class='bar-label'>Southwest Airlines (WN)</text>
+<rect x='230' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='342' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='342' width='28' height='28' fill='#d64545' opacity='0.14'></rect>
+<rect x='470' y='342' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='500' y='342' width='28' height='28' fill='#d64545' opacity='0.16'></rect>
+<rect x='530' y='342' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='560' y='342' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='590' y='342' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='620' y='342' width='28' height='28' fill='#d64545' opacity='0.27'></rect>
+<rect x='650' y='342' width='28' height='28' fill='#d64545' opacity='0.32'></rect>
+<rect x='680' y='342' width='28' height='28' fill='#d64545' opacity='0.32'></rect>
+<rect x='710' y='342' width='28' height='28' fill='#d64545' opacity='0.35'></rect>
+<rect x='740' y='342' width='28' height='28' fill='#d64545' opacity='0.36'></rect>
+<rect x='770' y='342' width='28' height='28' fill='#d64545' opacity='0.41'></rect>
+<rect x='800' y='342' width='28' height='28' fill='#d64545' opacity='0.41'></rect>
+<rect x='830' y='342' width='28' height='28' fill='#d64545' opacity='0.49'></rect>
+<rect x='860' y='342' width='28' height='28' fill='#d64545' opacity='0.57'></rect>
+<rect x='890' y='342' width='28' height='28' fill='#d64545' opacity='0.70'></rect>
+<rect x='920' y='342' width='28' height='28' fill='#d64545' opacity='0.83'></rect>
+<text x='925' y='360' class='heat-value'>68</text>
+<text x='8' y='391' class='bar-label'>Spirit Airlines (NK)</text>
+<rect x='230' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='372' width='28' height='28' fill='#d64545' opacity='0.40'></rect>
+<rect x='440' y='372' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='470' y='372' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='500' y='372' width='28' height='28' fill='#d64545' opacity='0.24'></rect>
+<rect x='530' y='372' width='28' height='28' fill='#d64545' opacity='0.35'></rect>
+<rect x='560' y='372' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='590' y='372' width='28' height='28' fill='#d64545' opacity='0.38'></rect>
+<rect x='620' y='372' width='28' height='28' fill='#d64545' opacity='0.41'></rect>
+<rect x='650' y='372' width='28' height='28' fill='#d64545' opacity='0.34'></rect>
+<rect x='680' y='372' width='28' height='28' fill='#d64545' opacity='0.40'></rect>
+<rect x='710' y='372' width='28' height='28' fill='#d64545' opacity='0.39'></rect>
+<rect x='740' y='372' width='28' height='28' fill='#d64545' opacity='0.44'></rect>
+<rect x='770' y='372' width='28' height='28' fill='#d64545' opacity='0.51'></rect>
+<rect x='800' y='372' width='28' height='28' fill='#d64545' opacity='0.38'></rect>
+<rect x='830' y='372' width='28' height='28' fill='#d64545' opacity='0.53'></rect>
+<rect x='860' y='372' width='28' height='28' fill='#d64545' opacity='0.76'></rect>
+<text x='865' y='390' class='heat-value'>60</text>
+<rect x='890' y='372' width='28' height='28' fill='#d64545' opacity='0.86'></rect>
+<text x='895' y='390' class='heat-value'>70</text>
+<rect x='920' y='372' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='8' y='421' class='bar-label'>United Airlines (UA)</text>
+<rect x='230' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='260' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='290' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='320' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='350' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='380' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='410' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='440' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<rect x='470' y='402' width='28' height='28' fill='#d64545' opacity='0.13'></rect>
+<rect x='500' y='402' width='28' height='28' fill='#d64545' opacity='0.15'></rect>
+<rect x='530' y='402' width='28' height='28' fill='#d64545' opacity='0.16'></rect>
+<rect x='560' y='402' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='590' y='402' width='28' height='28' fill='#d64545' opacity='0.19'></rect>
+<rect x='620' y='402' width='28' height='28' fill='#d64545' opacity='0.22'></rect>
+<rect x='650' y='402' width='28' height='28' fill='#d64545' opacity='0.18'></rect>
+<rect x='680' y='402' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='710' y='402' width='28' height='28' fill='#d64545' opacity='0.21'></rect>
+<rect x='740' y='402' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='770' y='402' width='28' height='28' fill='#d64545' opacity='0.25'></rect>
+<rect x='800' y='402' width='28' height='28' fill='#d64545' opacity='0.35'></rect>
+<rect x='830' y='402' width='28' height='28' fill='#d64545' opacity='0.33'></rect>
+<rect x='860' y='402' width='28' height='28' fill='#d64545' opacity='0.32'></rect>
+<rect x='890' y='402' width='28' height='28' fill='#d64545' opacity='0.38'></rect>
+<rect x='920' y='402' width='28' height='28' fill='#d64545' opacity='0.12'></rect>
+<text x='230' y='470' class='axis-label'>Hours use local airport time from the BTS file.</text>
+</svg></section>
+<section class='wide'><h3>Airline Scorecard</h3><p class='chart-note'>This table gives each airline a plain-language operating profile.</p><table><thead><tr><th>Airline</th><th>Turns</th><th>Aircraft</th><th>Turns per Aircraft</th><th>Daily Legs per Aircraft</th><th>Daily Flying Hours</th><th>Typical Ground Minutes</th><th>Tight Turn %</th><th>Idle Turn %</th><th>Delay Spread %</th><th>Recovery %</th></tr></thead><tbody><tr><td>Spirit Airlines (NK)</td><td>7048</td><td>114</td><td>61.8</td><td>3.9</td><td>6.0</td><td>67.0</td><td>2.1</td><td>10.0</td><td>24.6</td><td>6.4</td></tr><tr><td>Allegiant Air (G4)</td><td>7598</td><td>123</td><td>61.8</td><td>4.0</td><td>6.4</td><td>54.0</td><td>12.9</td><td>0.8</td><td>17.7</td><td>2.4</td></tr><tr><td>Frontier Airlines (F9)</td><td>13231</td><td>180</td><td>73.5</td><td>4.2</td><td>6.4</td><td>67.0</td><td>6.4</td><td>4.6</td><td>17.3</td><td>5.2</td></tr><tr><td>Southwest Airlines (WN)</td><td>93259</td><td>787</td><td>118.5</td><td>5.3</td><td>7.6</td><td>52.0</td><td>25.2</td><td>1.2</td><td>16.8</td><td>2.9</td></tr><tr><td>PSA Airlines (OH)</td><td>16068</td><td>136</td><td>118.1</td><td>5.4</td><td>5.6</td><td>48.0</td><td>44.5</td><td>3.2</td><td>15.7</td><td>4.8</td></tr><tr><td>JetBlue Airways (B6)</td><td>13043</td><td>284</td><td>45.9</td><td>3.3</td><td>6.3</td><td>70.0</td><td>3.0</td><td>7.8</td><td>15.0</td><td>6.1</td></tr><tr><td>American Airlines (AA)</td><td>57683</td><td>930</td><td>62.0</td><td>3.8</td><td>6.2</td><td>67.0</td><td>6.9</td><td>6.0</td><td>13.0</td><td>5.3</td></tr><tr><td>SkyWest Airlines (OO)</td><td>56104</td><td>514</td><td>109.2</td><td>5.1</td><td>5.0</td><td>52.0</td><td>37.0</td><td>4.0</td><td>11.8</td><td>6.8</td></tr><tr><td>Envoy Air (MQ)</td><td>21040</td><td>180</td><td>116.9</td><td>5.3</td><td>5.6</td><td>48.0</td><td>43.7</td><td>5.7</td><td>11.8</td><td>4.9</td></tr><tr><td>Republic Airways (YX)</td><td>24045</td><td>215</td><td>111.8</td><td>5.1</td><td>5.5</td><td>53.0</td><td>34.2</td><td>1.9</td><td>11.1</td><td>5.1</td></tr><tr><td>Alaska Airlines (AS)</td><td>18140</td><td>355</td><td>51.1</td><td>3.6</td><td>6.6</td><td>69.0</td><td>13.4</td><td>3.1</td><td>9.6</td><td>4.6</td></tr><tr><td>Delta Air Lines (DL)</td><td>61584</td><td>906</td><td>68.0</td><td>4.0</td><td>6.4</td><td>73.0</td><td>3.0</td><td>4.2</td><td>8.3</td><td>4.5</td></tr><tr><td>United Airlines (UA)</td><td>44969</td><td>975</td><td>46.1</td><td>3.3</td><td>5.6</td><td>81.0</td><td>2.0</td><td>5.3</td><td>8.1</td><td>7.1</td></tr></tbody></table></section>
+<section class='wide'><h3>Highest-Risk Airline-Airport Combinations</h3><p class='chart-note'>These are the airports where an airline&#x27;s arriving aircraft most often carry delay into the next flight.</p><table><thead><tr><th>Airline</th><th>Airport</th><th>City</th><th>Turns</th><th>Avg Ground Minutes</th><th>Tight Turn %</th><th>Inbound Late %</th><th>Delay Spread %</th></tr></thead><tbody><tr><td>Southwest Airlines (WN)</td><td>SFO</td><td>San Francisco, CA</td><td>625</td><td>53.8</td><td>30.4</td><td>58.4</td><td>52.2</td></tr><tr><td>Frontier Airlines (F9)</td><td>SFO</td><td>San Francisco, CA</td><td>227</td><td>56.1</td><td>25.6</td><td>48.5</td><td>45.8</td></tr><tr><td>Spirit Airlines (NK)</td><td>RSW</td><td>Fort Myers, FL</td><td>113</td><td>64.5</td><td>6.2</td><td>45.1</td><td>39.8</td></tr><tr><td>PSA Airlines (OH)</td><td>AGS</td><td>Augusta, GA</td><td>78</td><td>42.9</td><td>76.9</td><td>41.0</td><td>39.7</td></tr><tr><td>Allegiant Air (G4)</td><td>FLL</td><td>Fort Lauderdale, FL</td><td>296</td><td>64.7</td><td>5.4</td><td>38.5</td><td>37.2</td></tr><tr><td>Spirit Airlines (NK)</td><td>ORD</td><td>Chicago, IL</td><td>297</td><td>81.6</td><td>0.7</td><td>40.1</td><td>36.0</td></tr><tr><td>Spirit Airlines (NK)</td><td>LGA</td><td>New York, NY</td><td>250</td><td>67.5</td><td>2.8</td><td>40.4</td><td>35.6</td></tr><tr><td>SkyWest Airlines (OO)</td><td>FWA</td><td>Fort Wayne, IN</td><td>153</td><td>41.6</td><td>64.1</td><td>44.4</td><td>35.3</td></tr><tr><td>Frontier Airlines (F9)</td><td>LGA</td><td>New York, NY</td><td>158</td><td>59.6</td><td>8.2</td><td>39.2</td><td>34.8</td></tr><tr><td>Spirit Airlines (NK)</td><td>BOS</td><td>Boston, MA</td><td>218</td><td>71.9</td><td>2.8</td><td>39.4</td><td>33.5</td></tr><tr><td>American Airlines (AA)</td><td>MFE</td><td>Mission/McAllen/Edinburg, TX</td><td>84</td><td>52.6</td><td>48.8</td><td>34.5</td><td>33.3</td></tr><tr><td>Southwest Airlines (WN)</td><td>ORD</td><td>Chicago, IL</td><td>297</td><td>54.2</td><td>22.2</td><td>34.7</td><td>33.0</td></tr><tr><td>Alaska Airlines (AS)</td><td>SFO</td><td>San Francisco, CA</td><td>509</td><td>89.4</td><td>2.0</td><td>43.2</td><td>31.6</td></tr><tr><td>Spirit Airlines (NK)</td><td>PHL</td><td>Philadelphia, PA</td><td>127</td><td>97.0</td><td>4.7</td><td>38.6</td><td>31.5</td></tr><tr><td>Spirit Airlines (NK)</td><td>MSY</td><td>New Orleans, LA</td><td>99</td><td>106.8</td><td>2.0</td><td>34.3</td><td>30.3</td></tr><tr><td>Spirit Airlines (NK)</td><td>CLT</td><td>Charlotte, NC</td><td>189</td><td>71.0</td><td>3.2</td><td>31.7</td><td>29.6</td></tr><tr><td>Spirit Airlines (NK)</td><td>ATL</td><td>Atlanta, GA</td><td>333</td><td>77.9</td><td>0.3</td><td>35.7</td><td>29.4</td></tr><tr><td>Frontier Airlines (F9)</td><td>BDL</td><td>Hartford, CT</td><td>82</td><td>66.2</td><td>14.6</td><td>29.3</td><td>29.3</td></tr><tr><td>SkyWest Airlines (OO)</td><td>FNT</td><td>Flint, MI</td><td>102</td><td>41.2</td><td>68.6</td><td>39.2</td><td>28.4</td></tr><tr><td>PSA Airlines (OH)</td><td>HSV</td><td>Huntsville, AL</td><td>92</td><td>44.8</td><td>62.0</td><td>28.3</td><td>28.3</td></tr><tr><td>Allegiant Air (G4)</td><td>FNT</td><td>Flint, MI</td><td>85</td><td>63.8</td><td>5.9</td><td>31.8</td><td>28.2</td></tr><tr><td>Spirit Airlines (NK)</td><td>DTW</td><td>Detroit, MI</td><td>364</td><td>81.6</td><td>2.2</td><td>35.7</td><td>28.0</td></tr><tr><td>SkyWest Airlines (OO)</td><td>CHO</td><td>Charlottesville, VA</td><td>75</td><td>45.0</td><td>56.0</td><td>33.3</td><td>28.0</td></tr><tr><td>Frontier Airlines (F9)</td><td>FLL</td><td>Fort Lauderdale, FL</td><td>354</td><td>64.9</td><td>5.9</td><td>29.1</td><td>28.0</td></tr><tr><td>Frontier Airlines (F9)</td><td>CLT</td><td>Charlotte, NC</td><td>260</td><td>64.2</td><td>17.3</td><td>30.8</td><td>27.7</td></tr><tr><td>Southwest Airlines (WN)</td><td>BOS</td><td>Boston, MA</td><td>430</td><td>56.0</td><td>18.4</td><td>27.4</td><td>27.4</td></tr><tr><td>Spirit Airlines (NK)</td><td>EWR</td><td>Newark, NJ</td><td>447</td><td>89.1</td><td>0.4</td><td>32.7</td><td>27.3</td></tr><tr><td>PSA Airlines (OH)</td><td>MCI</td><td>Kansas City, MO</td><td>99</td><td>38.3</td><td>79.8</td><td>30.3</td><td>27.3</td></tr><tr><td>American Airlines (AA)</td><td>SFO</td><td>San Francisco, CA</td><td>576</td><td>73.8</td><td>3.1</td><td>34.7</td><td>27.3</td></tr><tr><td>SkyWest Airlines (OO)</td><td>PIA</td><td>Peoria, IL</td><td>125</td><td>49.4</td><td>62.4</td><td>35.2</td><td>27.2</td></tr><tr><td>Spirit Airlines (NK)</td><td>TPA</td><td>Tampa, FL</td><td>164</td><td>64.3</td><td>8.5</td><td>31.1</td><td>26.8</td></tr><tr><td>Envoy Air (MQ)</td><td>FSD</td><td>Sioux Falls, SD</td><td>94</td><td>38.5</td><td>84.0</td><td>30.9</td><td>26.6</td></tr><tr><td>PSA Airlines (OH)</td><td>HPN</td><td>White Plains, NY</td><td>158</td><td>36.8</td><td>86.1</td><td>26.6</td><td>25.9</td></tr><tr><td>Envoy Air (MQ)</td><td>CVG</td><td>Cincinnati, OH</td><td>85</td><td>42.5</td><td>71.8</td><td>25.9</td><td>25.9</td></tr><tr><td>PSA Airlines (OH)</td><td>CHA</td><td>Chattanooga, TN</td><td>85</td><td>43.7</td><td>69.4</td><td>25.9</td><td>25.9</td></tr></tbody></table></section>
+<section class='wide'><h3>Riskiest Inbound-to-Outbound Aircraft Rotations</h3><p class='chart-note'>This shows the actual route pair: where the aircraft came from, where it turned, and where it went next.</p><table><thead><tr><th>Airline</th><th>Inbound Route</th><th>Next Route</th><th>Airport</th><th>Turns</th><th>Avg Ground Minutes</th><th>Tight Turn %</th><th>Delay Spread %</th><th>Avg Arrival Delay</th><th>Avg Next Departure Delay</th></tr></thead><tbody><tr><td>Southwest Airlines (WN)</td><td>SAN -&gt; BOI</td><td>BOI -&gt; DEN</td><td>BOI</td><td>10</td><td>46.1</td><td>50.0</td><td>100.0</td><td>65.7</td><td>71.8</td></tr><tr><td>Spirit Airlines (NK)</td><td>FLL -&gt; DTW</td><td>DTW -&gt; FLL</td><td>DTW</td><td>11</td><td>67.1</td><td>0.0</td><td>100.0</td><td>60.7</td><td>62.8</td></tr><tr><td>Southwest Airlines (WN)</td><td>MSY -&gt; TPA</td><td>TPA -&gt; MSY</td><td>TPA</td><td>10</td><td>37.5</td><td>90.0</td><td>100.0</td><td>46.0</td><td>43.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>SFO -&gt; LAS</td><td>LAS -&gt; DAL</td><td>LAS</td><td>11</td><td>53.0</td><td>18.2</td><td>100.0</td><td>95.0</td><td>108.0</td></tr><tr><td>Frontier Airlines (F9)</td><td>ONT -&gt; SFO</td><td>SFO -&gt; LAS</td><td>SFO</td><td>13</td><td>38.9</td><td>84.6</td><td>92.3</td><td>46.3</td><td>39.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>SAN -&gt; SFO</td><td>SFO -&gt; STL</td><td>SFO</td><td>11</td><td>60.9</td><td>9.1</td><td>90.9</td><td>59.8</td><td>80.7</td></tr><tr><td>JetBlue Airways (B6)</td><td>PBI -&gt; DCA</td><td>DCA -&gt; FLL</td><td>DCA</td><td>11</td><td>64.3</td><td>18.2</td><td>90.9</td><td>63.6</td><td>67.9</td></tr><tr><td>Southwest Airlines (WN)</td><td>DAL -&gt; BNA</td><td>BNA -&gt; STL</td><td>BNA</td><td>10</td><td>56.7</td><td>10.0</td><td>90.0</td><td>28.4</td><td>45.1</td></tr><tr><td>Southwest Airlines (WN)</td><td>PHX -&gt; SAN</td><td>SAN -&gt; RNO</td><td>SAN</td><td>10</td><td>44.4</td><td>40.0</td><td>90.0</td><td>37.1</td><td>46.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>OKC -&gt; BNA</td><td>BNA -&gt; DEN</td><td>BNA</td><td>10</td><td>48.3</td><td>20.0</td><td>90.0</td><td>49.2</td><td>57.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>BNA -&gt; STL</td><td>STL -&gt; OMA</td><td>STL</td><td>10</td><td>44.7</td><td>80.0</td><td>90.0</td><td>38.7</td><td>39.4</td></tr><tr><td>Southwest Airlines (WN)</td><td>SAN -&gt; RNO</td><td>RNO -&gt; LGB</td><td>RNO</td><td>10</td><td>38.9</td><td>100.0</td><td>90.0</td><td>40.5</td><td>44.4</td></tr><tr><td>Southwest Airlines (WN)</td><td>LAS -&gt; BNA</td><td>BNA -&gt; PHL</td><td>BNA</td><td>10</td><td>55.9</td><td>20.0</td><td>90.0</td><td>57.6</td><td>63.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>LAX -&gt; AUS</td><td>AUS -&gt; BWI</td><td>AUS</td><td>10</td><td>50.1</td><td>20.0</td><td>90.0</td><td>31.4</td><td>36.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>RDU -&gt; BNA</td><td>BNA -&gt; JAN</td><td>BNA</td><td>10</td><td>44.6</td><td>50.0</td><td>90.0</td><td>40.1</td><td>44.7</td></tr><tr><td>Frontier Airlines (F9)</td><td>LAX -&gt; SFO</td><td>SFO -&gt; ATL</td><td>SFO</td><td>23</td><td>64.6</td><td>0.0</td><td>87.0</td><td>38.9</td><td>41.6</td></tr><tr><td>Spirit Airlines (NK)</td><td>SJU -&gt; ATL</td><td>ATL -&gt; SJU</td><td>ATL</td><td>15</td><td>58.0</td><td>0.0</td><td>86.7</td><td>34.7</td><td>33.9</td></tr><tr><td>Spirit Airlines (NK)</td><td>RSW -&gt; BOS</td><td>BOS -&gt; MIA</td><td>BOS</td><td>13</td><td>82.2</td><td>0.0</td><td>84.6</td><td>49.8</td><td>76.2</td></tr><tr><td>Southwest Airlines (WN)</td><td>LAS -&gt; SFO</td><td>SFO -&gt; SAN</td><td>SFO</td><td>12</td><td>53.0</td><td>33.3</td><td>83.3</td><td>57.5</td><td>71.8</td></tr><tr><td>Southwest Airlines (WN)</td><td>DEN -&gt; SFO</td><td>SFO -&gt; LAS</td><td>SFO</td><td>11</td><td>53.9</td><td>9.1</td><td>81.8</td><td>32.6</td><td>47.0</td></tr><tr><td>Spirit Airlines (NK)</td><td>SJU -&gt; PHL</td><td>PHL -&gt; FLL</td><td>PHL</td><td>11</td><td>92.1</td><td>9.1</td><td>81.8</td><td>97.5</td><td>65.1</td></tr><tr><td>Southwest Airlines (WN)</td><td>PSP -&gt; LAS</td><td>LAS -&gt; SAT</td><td>LAS</td><td>10</td><td>36.3</td><td>80.0</td><td>80.0</td><td>43.7</td><td>30.0</td></tr><tr><td>Southwest Airlines (WN)</td><td>SFO -&gt; STL</td><td>STL -&gt; DEN</td><td>STL</td><td>10</td><td>51.2</td><td>70.0</td><td>80.0</td><td>81.5</td><td>75.2</td></tr><tr><td>Southwest Airlines (WN)</td><td>AUS -&gt; SJC</td><td>SJC -&gt; LAS</td><td>SJC</td><td>10</td><td>52.6</td><td>30.0</td><td>80.0</td><td>30.0</td><td>42.6</td></tr><tr><td>Southwest Airlines (WN)</td><td>LAX -&gt; BWI</td><td>BWI -&gt; IND</td><td>BWI</td><td>10</td><td>43.9</td><td>70.0</td><td>80.0</td><td>38.9</td><td>47.8</td></tr><tr><td>Southwest Airlines (WN)</td><td>ATL -&gt; LAS</td><td>LAS -&gt; OAK</td><td>LAS</td><td>10</td><td>53.0</td><td>30.0</td><td>80.0</td><td>33.4</td><td>46.4</td></tr><tr><td>Southwest Airlines (WN)</td><td>SAN -&gt; PHX</td><td>PHX -&gt; ONT</td><td>PHX</td><td>10</td><td>96.1</td><td>30.0</td><td>80.0</td><td>33.0</td><td>45.1</td></tr><tr><td>Southwest Airlines (WN)</td><td>BUR -&gt; SFO</td><td>SFO -&gt; BUR</td><td>SFO</td><td>28</td><td>36.9</td><td>85.7</td><td>78.6</td><td>47.1</td><td>47.2</td></tr><tr><td>Southwest Airlines (WN)</td><td>BUR -&gt; SFO</td><td>SFO -&gt; SAN</td><td>SFO</td><td>14</td><td>42.5</td><td>50.0</td><td>78.6</td><td>24.9</td><td>32.4</td></tr><tr><td>Southwest Airlines (WN)</td><td>AUS -&gt; BOS</td><td>BOS -&gt; BWI</td><td>BOS</td><td>13</td><td>56.6</td><td>23.1</td><td>76.9</td><td>27.8</td><td>44.5</td></tr><tr><td>Southwest Airlines (WN)</td><td>SAN -&gt; SFO</td><td>SFO -&gt; DAL</td><td>SFO</td><td>17</td><td>59.3</td><td>5.9</td><td>76.5</td><td>47.6</td><td>64.8</td></tr><tr><td>Alaska Airlines (AS)</td><td>SFO -&gt; LAS</td><td>LAS -&gt; PDX</td><td>LAS</td><td>21</td><td>54.0</td><td>4.8</td><td>76.2</td><td>46.9</td><td>47.0</td></tr><tr><td>JetBlue Airways (B6)</td><td>HPN -&gt; MCO</td><td>MCO -&gt; SJU</td><td>MCO</td><td>12</td><td>64.2</td><td>0.0</td><td>75.0</td><td>41.3</td><td>48.8</td></tr><tr><td>SkyWest Airlines (OO)</td><td>GEG -&gt; SFO</td><td>SFO -&gt; SNA</td><td>SFO</td><td>12</td><td>55.9</td><td>50.0</td><td>75.0</td><td>36.6</td><td>36.8</td></tr><tr><td>Spirit Airlines (NK)</td><td>FLL -&gt; EWR</td><td>EWR -&gt; MIA</td><td>EWR</td><td>12</td><td>92.0</td><td>0.0</td><td>75.0</td><td>75.8</td><td>98.8</td></tr></tbody></table></section>
+</div>
+</main>
+</body>
+</html>

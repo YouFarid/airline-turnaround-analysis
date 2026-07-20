@@ -12,7 +12,7 @@ Live dashboard file:
 
 `index.html`
 
-If this repo is deployed with GitHub Pages, that file becomes the homepage.
+At page: `https://youfarid.github.io/airline-turnaround-analysis/`
 
 ## Why I Built This
 
